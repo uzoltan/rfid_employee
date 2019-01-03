@@ -29,7 +29,7 @@ public class Employee {
   private String name;
 
   @Type(type = "yes_no")
-  private Boolean isInside;
+  private boolean isInside;
 
   @PastOrPresent(message = "Last RFID timestamp can not be in the future")
   private ZonedDateTime lastSwipe;
@@ -73,11 +73,11 @@ public class Employee {
     this.name = name;
   }
 
-  public Boolean isInside() {
+  public boolean isInside() {
     return isInside;
   }
 
-  public void setInside(Boolean inside) {
+  public void setInside(boolean inside) {
     isInside = inside;
   }
 
