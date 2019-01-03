@@ -1,12 +1,17 @@
 package ai.aitia.rfid_employee;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.ZonedDateTime;
 import java.util.List;
-import org.junit.After;
+import org.junit.Assert;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -26,7 +31,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @AutoConfigureMockMvc
 @AutoConfigureTestDatabase
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
-@TestPropertySource(locations = "classpath:application-integrationtest.properties")
+@TestPropertySource(locations = "classpath:application-test.properties")
 public class EmployeeControllerIntegrationTests {
 
   @Autowired
@@ -35,28 +40,97 @@ public class EmployeeControllerIntegrationTests {
   @Autowired
   private EmployeeRepository repository;
 
-  @After
-  public void resetDb() {
-    repository.deleteAll();
+  // @formatter:off
+  @Test
+  public void _01addEmployee_whenValidInput_thenCreateEmployee() throws Exception {
+    Employee sampleEmployee = new Employee("tagId01", "John Doe", false, ZonedDateTime.now());
+    mvc.perform(post("/employees").contentType(MediaType.APPLICATION_JSON).content(JsonUtil.toJson(sampleEmployee)))
+       .andExpect(status().isCreated())
+       .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+       .andExpect(jsonPath("$.tagId").value("tagId01"))
+       .andExpect(jsonPath("$.name").value("John Doe"))
+       .andExpect(jsonPath("$.inside").value(false));
+    //lastSwipe ZonedDateTime value might be formatted differently when returned by the repository.save() method
+
+    List<Employee> employees = repository.findAll();
+    assertThat(employees).extracting(Employee::getName).containsOnly("John Doe");
+  }
+
+  //@Test
+  public void _02addEmployee_whenDuplicateTagId_thenExceptionIsReturned() throws Exception {
+    Employee sampleEmployee = new Employee("tagId01", "John Doe");
+    mvc.perform(post("/employees").contentType(MediaType.APPLICATION_JSON).content(JsonUtil.toJson(sampleEmployee)))
+       .andExpect(status().isConflict())
+       .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+       .andExpect(jsonPath("$.message").value("An employee named John Doe already uses RFID tagID tagId01"));
+
+
+    int employeeCount = repository.findAll().size();
+    Assert.assertEquals(1, employeeCount);
   }
 
   @Test
-  public void _01whenValidInput_thenCreateEmployee() throws Exception {
-    Employee sampleEmployee = new Employee("tagId01", "Varga Pál", false, ZonedDateTime.now());
-    mvc.perform(post("/employees").contentType(MediaType.APPLICATION_JSON).content(JsonUtil.toJson(sampleEmployee))).andExpect(status().isCreated());
-
-    List<Employee> employees = repository.findAll();
-    assertThat(employees).extracting(Employee::getName).containsOnly("Varga Pál");
-
-    /*// @formatter:off
-    mvc.perform(get("/api/employees").contentType(MediaType.APPLICATION_JSON))
-       .andDo(print())
+  public void _03getEmployees_returnsTheCorrectNumberOfEmployees() throws Exception {
+    mvc.perform(get("/employees"))
        .andExpect(status().isOk())
        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-       .andExpect(jsonPath("$", hasSize(greaterThanOrEqualTo(2))))
-       .andExpect(jsonPath("$[0].name", is("bob")))
-       .andExpect(jsonPath("$[1].name", is("alex")));
-    // @formatter:on*/
+       .andExpect(jsonPath("$.totalElements").value(1));
+
+    Employee tempEmployee = new Employee("tagId02", "Jane Doe");
+    repository.save(tempEmployee);
+    mvc.perform(get("/employees"))
+       .andExpect(status().isOk())
+       .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+       .andExpect(jsonPath("$.totalElements").value(2));
+
+    repository.delete(tempEmployee);
+    mvc.perform(get("/employees"))
+       .andExpect(status().isOk())
+       .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+       .andExpect(jsonPath("$.totalElements").value(1));
   }
 
+  @Test
+  public void _04getEmployeeByRfidTagId_returnsTheCorrectEmployee() throws Exception {
+    mvc.perform(get("/employees/tagId01"))
+       .andExpect(status().isOk())
+       .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+       .andExpect(jsonPath("$.tagId").value("tagId01"))
+       .andExpect(jsonPath("$.name").value("John Doe"))
+       .andExpect(jsonPath("$.inside").value(false));
+  }
+
+  @Test
+  public void _05updateEmployee_whenTagIdExists_thenUpdateEmployeeStatus() throws Exception{
+    mvc.perform(put("/employees/tagId01"))
+       .andExpect(status().isOk())
+       .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+       .andExpect(jsonPath("$.tagId").value("tagId01"))
+       .andExpect(jsonPath("$.name").value("John Doe"))
+       .andExpect(jsonPath("$.inside").value(true))
+       .andExpect(jsonPath("$.lastSwipe").isString());
+  }
+
+  //@Test
+  public void _06updateEmployee_whenTagIdDoesNotExists_thenExceptionIsReturned() throws Exception{
+    mvc.perform(put("/employees/tagId999"))
+       .andExpect(status().isNotFound())
+       .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+       .andExpect(jsonPath("$.message").value("Employee with RFID tagID tagId999 not found"));
+  }
+
+  @Test
+  public void _07deleteEmployee_whenTagIdExists_thenDeleteEmployee() throws Exception {
+    mvc.perform(delete("/employees/tagId01"))
+       .andExpect(status().isOk());
+  }
+
+  //@Test
+  public void _08deleteEmployee_whenTagIdDoesNotExists_thenExceptionIsReturned() throws Exception {
+    mvc.perform(delete("/employees/tagId999"))
+       .andExpect(status().isNotFound())
+       .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+       .andExpect(jsonPath("$.message").value("Employee with RFID tagID tagId999 not found"));
+  }
+  // @formatter:on
 }

@@ -29,12 +29,17 @@ public class Employee {
   private String name;
 
   @Type(type = "yes_no")
-  private boolean isInside;
+  private Boolean isInside;
 
   @PastOrPresent(message = "Last RFID timestamp can not be in the future")
   private ZonedDateTime lastSwipe;
 
   public Employee() {
+  }
+
+  public Employee(@NotNull String tagId, @NotNull @Size(max = 255, message = "Employee name can not be longer than 255 character") String name) {
+    this.tagId = tagId;
+    this.name = name;
   }
 
   public Employee(String tagId, String name, boolean isInside, ZonedDateTime lastSwipe) {
@@ -68,11 +73,11 @@ public class Employee {
     this.name = name;
   }
 
-  public boolean isInside() {
+  public Boolean isInside() {
     return isInside;
   }
 
-  public void setInside(boolean inside) {
+  public void setInside(Boolean inside) {
     isInside = inside;
   }
 
