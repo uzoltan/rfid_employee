@@ -9,6 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import ai.aitia.rfid_employee.entity.Employee;
+import ai.aitia.rfid_employee.repository.EmployeeRepository;
 import java.time.ZonedDateTime;
 import java.util.List;
 import org.junit.Assert;

@@ -1,7 +1,12 @@
 package ai.aitia.rfid_employee;
 
+import ai.aitia.rfid_employee.entity.Employee;
+import ai.aitia.rfid_employee.entity.History;
 import ai.aitia.rfid_employee.exception.DuplicateEntryException;
 import ai.aitia.rfid_employee.exception.ResourceNotFoundException;
+import ai.aitia.rfid_employee.repository.EmployeeRepository;
+import ai.aitia.rfid_employee.repository.HistoryRepository;
+import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.Optional;
 import javax.validation.Valid;
@@ -10,6 +15,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,10 +30,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class EmployeeController {
 
   private final EmployeeRepository employeeRepository;
+  private final HistoryRepository historyRepository;
 
   @Autowired
-  public EmployeeController(EmployeeRepository repository) {
-    employeeRepository = repository;
+  public EmployeeController(EmployeeRepository employeeRepo, HistoryRepository historyRepo) {
+    employeeRepository = employeeRepo;
+    historyRepository = historyRepo;
   }
 
   @GetMapping("employees")
@@ -38,6 +46,12 @@ public class EmployeeController {
   @GetMapping("employees/{tagId}")
   public Employee getEmployeeByRfidTagId(@PathVariable(value = "tagId") String tagId) {
     return employeeRepository.findByTagId(tagId).orElseThrow(() -> new ResourceNotFoundException("Employee with RFID tagID " + tagId + " not found"));
+  }
+
+  @GetMapping(value = "employees/in", produces = MediaType.TEXT_PLAIN_VALUE)
+  public String getNumberOfEmployeesAtWork() {
+    long count = employeeRepository.countByInside(true);
+    return count + " employee(s) in AITIA at " + LocalDateTime.now();
   }
 
   @PostMapping("employees")
@@ -62,7 +76,9 @@ public class EmployeeController {
     return employeeRepository.findByTagId(tagId).map(employee -> {
       employee.setInside(!employee.isInside());
       employee.setLastSwipe(ZonedDateTime.now());
-      return employeeRepository.save(employee);
+      employee = employeeRepository.save(employee);
+      historyRepository.save(new History(employee));
+      return employee;
     }).orElseThrow(() -> new ResourceNotFoundException("Employee with RFID tagID " + tagId + " not found"));
   }
 
