@@ -6,7 +6,6 @@ import ai.aitia.rfid_employee.exception.DuplicateEntryException;
 import ai.aitia.rfid_employee.exception.ResourceNotFoundException;
 import ai.aitia.rfid_employee.repository.EmployeeRepository;
 import ai.aitia.rfid_employee.repository.HistoryRepository;
-import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.Optional;
 import javax.validation.Valid;
@@ -48,10 +47,36 @@ public class EmployeeController {
     return employeeRepository.findByTagId(tagId).orElseThrow(() -> new ResourceNotFoundException("Employee with RFID tagID " + tagId + " not found"));
   }
 
-  @GetMapping(value = "employees/in", produces = MediaType.TEXT_PLAIN_VALUE)
+  @GetMapping(value = "employees/in", produces = MediaType.TEXT_HTML_VALUE)
   public String getNumberOfEmployeesAtWork() {
-    long count = employeeRepository.countByInside(true);
-    return count + " employee(s) in AITIA at " + LocalDateTime.now();
+    int count = Math.toIntExact(employeeRepository.countByInside(true));
+
+    // I'm not liable for this "master piece"
+    // @formatter:off
+    String htmlHead = "<!DOCTYPE html>\n"
+                    + "<meta http-equiv=\"Refresh\" content=\"5\">\n"
+                    + "<html>\n"
+                    + "<head>\n"
+                    + "<title>AITIA Employee Counter</title>\n"
+                    + "</head>\n"
+                    + "<body>\n"
+                    + "<h1 style=\"margin-top: 5em; text-align:center\">";
+
+    String sentence;
+    if (count == 0) {
+      sentence = "We have like zero people inside yo. Business as usual.";
+    } else if (count == 1) {
+      sentence = "There is currently only 1 person inside.";
+    } else {
+      sentence = "There are currently " + count + " people inside.";
+    }
+
+    String htmlTail = "</h1>\n"
+                    + "</body>\n"
+                    + "</html>";
+
+    return htmlHead + sentence + htmlTail;
+    // @formatter:on
   }
 
   @PostMapping("employees")
