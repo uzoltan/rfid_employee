@@ -1,6 +1,7 @@
 package ai.aitia.rfid_employee.entity;
 
 import java.time.ZonedDateTime;
+import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
@@ -26,8 +27,9 @@ public class History {
   @Size(max = 255, message = "Employee name can not be longer than 255 character")
   private String name;
 
+  @Column(name = "is_inside")
   @Type(type = "yes_no")
-  private boolean isInside;
+  private boolean inside;
 
   @PastOrPresent(message = "RFID timestamp can not be in the future")
   private ZonedDateTime timestamp;
@@ -38,7 +40,7 @@ public class History {
   public History(Employee employee) {
     this.tagId = employee.getTagId();
     this.name = employee.getName();
-    this.isInside = employee.isInside();
+    this.inside = employee.isInside();
     this.timestamp = employee.getLastSwipe();
   }
 
@@ -48,10 +50,10 @@ public class History {
   }
 
   public History(@NotNull String tagId, @NotNull @Size(max = 255, message = "Employee name can not be longer than 255 character") String name,
-                 boolean isInside, @PastOrPresent(message = "RFID timestamp can not be in the future") ZonedDateTime timestamp) {
+                 boolean inside, @PastOrPresent(message = "RFID timestamp can not be in the future") ZonedDateTime timestamp) {
     this.tagId = tagId;
     this.name = name;
-    this.isInside = isInside;
+    this.inside = inside;
     this.timestamp = timestamp;
   }
 
@@ -80,11 +82,11 @@ public class History {
   }
 
   public boolean isInside() {
-    return isInside;
+    return inside;
   }
 
   public void setInside(boolean inside) {
-    isInside = inside;
+    this.inside = inside;
   }
 
   public ZonedDateTime getTimestamp() {
