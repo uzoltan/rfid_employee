@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import ai.aitia.rfid_employee.entity.Employee;
 import ai.aitia.rfid_employee.repository.EmployeeRepository;
+import com.jayway.jsonpath.JsonPath;
 import java.time.ZonedDateTime;
 import java.util.List;
 import org.junit.Assert;
@@ -23,7 +24,10 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabas
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
+import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
@@ -38,6 +42,9 @@ public class EmployeeControllerIntegrationTests {
 
   @Autowired
   private MockMvc mvc;
+
+  @Autowired
+  private TestRestTemplate testRestTemplate;
 
   @Autowired
   private EmployeeRepository repository;
@@ -58,14 +65,15 @@ public class EmployeeControllerIntegrationTests {
     assertThat(employees).extracting(Employee::getName).containsOnly("John Doe");
   }
 
-  //@Test
-  public void _02addEmployee_whenDuplicateTagId_thenExceptionIsReturned() throws Exception {
+  @Test
+  public void _02addEmployee_whenDuplicateTagId_thenExceptionIsReturned() {
     Employee sampleEmployee = new Employee("tagId01", "John Doe");
-    mvc.perform(post("/employees").contentType(MediaType.APPLICATION_JSON).content(JsonUtil.toJson(sampleEmployee)))
-       .andExpect(status().isConflict())
-       .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-       .andExpect(jsonPath("$.message").value("An employee named John Doe already uses RFID tagID tagId01"));
 
+    ResponseEntity<String> response = testRestTemplate.postForEntity("/employees", sampleEmployee, String.class);
+    String actualMessage = JsonPath.read(response.getBody(), "$.message");
+    String expectedMessage = "An employee named John Doe already uses RFID tagID tagId01";
+    Assert.assertEquals(expectedMessage, actualMessage);
+    Assert.assertEquals(409, response.getStatusCodeValue());
 
     int employeeCount = repository.findAll().size();
     Assert.assertEquals(1, employeeCount);
@@ -113,12 +121,13 @@ public class EmployeeControllerIntegrationTests {
        .andExpect(jsonPath("$.lastSwipe").isString());
   }
 
-  //@Test
-  public void _06updateEmployee_whenTagIdDoesNotExists_thenExceptionIsReturned() throws Exception{
-    mvc.perform(put("/employees/tagId999"))
-       .andExpect(status().isNotFound())
-       .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-       .andExpect(jsonPath("$.message").value("Employee with RFID tagID tagId999 not found"));
+  @Test
+  public void _06updateEmployee_whenTagIdDoesNotExists_thenExceptionIsReturned() {
+    ResponseEntity<String> response = testRestTemplate.exchange("/employees/tagId999", HttpMethod.PUT, null, String.class);
+    String actualMessage = JsonPath.read(response.getBody(), "$.message");
+    String expectedMessage = "Employee with RFID tagID tagId999 not found";
+    Assert.assertEquals(expectedMessage, actualMessage);
+    Assert.assertEquals(404, response.getStatusCodeValue());
   }
 
   @Test
@@ -127,12 +136,13 @@ public class EmployeeControllerIntegrationTests {
        .andExpect(status().isOk());
   }
 
-  //@Test
+  @Test
   public void _08deleteEmployee_whenTagIdDoesNotExists_thenExceptionIsReturned() throws Exception {
-    mvc.perform(delete("/employees/tagId999"))
-       .andExpect(status().isNotFound())
-       .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-       .andExpect(jsonPath("$.message").value("Employee with RFID tagID tagId999 not found"));
+    ResponseEntity<String> response = testRestTemplate.exchange("/employees/tagId999", HttpMethod.DELETE, null, String.class);
+    String actualMessage = JsonPath.read(response.getBody(), "$.message");
+    String expectedMessage = "Employee with RFID tagID tagId999 not found";
+    Assert.assertEquals(expectedMessage, actualMessage);
+    Assert.assertEquals(404, response.getStatusCodeValue());
   }
   // @formatter:on
 }
