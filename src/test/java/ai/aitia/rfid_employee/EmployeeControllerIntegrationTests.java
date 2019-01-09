@@ -137,7 +137,7 @@ public class EmployeeControllerIntegrationTests {
   }
 
   @Test
-  public void _08deleteEmployee_whenTagIdDoesNotExists_thenExceptionIsReturned() throws Exception {
+  public void _08deleteEmployee_whenTagIdDoesNotExists_thenExceptionIsReturned() {
     ResponseEntity<String> response = testRestTemplate.exchange("/employees/tagId999", HttpMethod.DELETE, null, String.class);
     String actualMessage = JsonPath.read(response.getBody(), "$.message");
     String expectedMessage = "Employee with RFID tagID tagId999 not found";
